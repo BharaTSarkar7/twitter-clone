@@ -1,4 +1,3 @@
-import 'package:appwrite/appwrite.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twitter_clone/apis/auth_api.dart';
@@ -17,6 +16,17 @@ final authControllerProvider =
     authAPI: authAPI,
     userAPI: ref.watch(userAPIProvider),
   );
+});
+
+final currentUserDetailsProvider = FutureProvider((ref) {
+  final currentUserID = ref.watch(currentUserAccountProvider).value!.$id;
+  final userDetails = ref.watch(userDetailsProvider(currentUserID));
+  return userDetails.value;
+});
+
+final userDetailsProvider = FutureProvider.family((ref, String uid) {
+  final authController = ref.watch(authControllerProvider.notifier);
+  return authController.getUserData(uid);
 });
 
 final currentUserAccountProvider = FutureProvider((ref) {
@@ -52,8 +62,24 @@ class AuthController extends StateNotifier<bool> {
     state = false;
     response.fold(
       (l) => showSnackBar(content: l.message, context: context),
-      (r) {
-        Navigator.pushNamed(context, LoginScreen.routeName);
+      (r) async {
+        UserModel userModel = UserModel(
+          email: email,
+          name: getNameFromEmail(email),
+          followers: const [],
+          following: const [],
+          profilePic: '',
+          bannerPic: '',
+          uid: r.$id,
+          bio: '',
+          isTwitterBlue: false,
+        );
+        final result = await _userAPI.saveUserData(userModel);
+        result.fold(
+            (l) => showSnackBar(
+                context: context, content: 'Account created Login now!'), (r) {
+          Navigator.pushNamed(context, LoginScreen.routeName);
+        });
       },
     );
   }
@@ -69,26 +95,18 @@ class AuthController extends StateNotifier<bool> {
       password: password,
     );
     state = false;
-    response.fold(
-      (l) => showSnackBar(content: l.message, context: context),
-      (r) async {
-        UserModel userModel = UserModel(
-          email: email,
-          name: getNameFromEmail(email),
-          followers: const [],
-          following: const [],
-          profilePic: '',
-          bannerPic: '',
-          uid: '',
-          bio: '',
-          isTwitterBlue: false,
-        );
-        final result = await _userAPI.saveUserData(userModel);
-        result.fold((l) => showSnackBar(content: l.message, context: context),
-            (_) {
-          Navigator.pushNamed(context, HomeScreen.routeName);
-        });
-      },
-    );
+    response.fold((l) {
+      showSnackBar(context: context, content: l.message);
+    }, (r) {
+      Navigator.pushNamed(context, HomeScreen.routeName);
+    });
+  }
+
+  Future<UserModel> getUserData(String uid) async {
+    final document = await _userAPI.getUserData(uid);
+
+    final updatedUser = UserModel.fromMap(document.data);
+
+    return updatedUser;
   }
 }

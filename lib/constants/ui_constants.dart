@@ -8,10 +8,17 @@ class UIConstants {
     return AppBar(
       title: SvgPicture.asset(
         AssetsConstants.twitterLogo,
-        color: AppColors.blueColor,
+        colorFilter:
+            const ColorFilter.mode(AppColors.blueColor, BlendMode.srcIn),
         height: 30,
       ),
       centerTitle: true,
     );
   }
+
+  static List<Widget> bottomTabBarScreens = [
+    const Text('feed Screen'),
+    const Text('Search Screen'),
+    const Text('Notification Screen'),
+  ];
 }
